@@ -19,3 +19,6 @@ client:
 
 push_message:
 	go run ./cmd/pusher/push_message.go
+
+test:
+	go test -v ./protocol
