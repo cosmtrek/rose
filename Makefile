@@ -14,8 +14,9 @@ install: clean
 server: install
 	$(BIN)
 
+id ?= 1
 client:
-	go run ./cmd/client/client.go
+	go run ./cmd/client/client.go -id=$(id)
 
 push_message:
 	go run ./cmd/pusher/push_message.go

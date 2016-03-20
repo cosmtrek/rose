@@ -1,38 +1,55 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/cosmtrek/rose/protocol"
 	"log"
 	"net"
 	"os"
+	"strconv"
 )
 
-func sender(conn net.Conn, done chan<- bool) {
+func sender(conn net.Conn, id int, done chan<- bool) {
 	defer func() {
 		done <- true
 	}()
 
-	msg := "{\"id\":1,\"action\":\"ping\"}"
+	msg := "{\"id\":" + strconv.Itoa(id) + ",\"action\":\"ping\"}"
 	if _, err := conn.Write(protocol.Pack([]byte(msg))); err != nil {
 		fmt.Println("Cannot write to remote connection and exiting...")
 		os.Exit(1)
 	}
 }
 
-func reader(conn net.Conn, done chan<- bool) {
+func reader(conn net.Conn, done chan bool) {
 	defer func() {
 		done <- true
 	}()
 
 	buf := make([]byte, 1024)
+	tmpBuf := make([]byte, 1024)
+	message := make(chan []byte)
+
+	go func(message chan []byte, done chan bool) {
+		for {
+			select {
+			case m := <-message:
+				log.Println(string(m))
+			case <-done:
+				return
+			}
+		}
+	}(message, done)
+
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
 			fmt.Println("Cannot read from remote connection and exiting...")
 			os.Exit(1)
 		}
-		log.Println(string(buf[:n]))
+
+		tmpBuf = protocol.Unpack(append(tmpBuf, buf[:n]...), message)
 	}
 }
 
@@ -51,10 +68,13 @@ func main() {
 
 	fmt.Println("Connect successfully")
 
+	id := flag.Int("id", 1, "client id")
+	flag.Parse()
+
 	var sendDone chan bool
 	var readDone chan bool
 
-	go sender(conn, sendDone)
+	go sender(conn, *id, sendDone)
 	go reader(conn, readDone)
 
 	<-sendDone

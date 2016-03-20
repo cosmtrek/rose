@@ -3,11 +3,10 @@ package main
 import (
 	"log"
 	"net"
+	"strconv"
 	"time"
 
-	"encoding/json"
 	"github.com/cosmtrek/rose/protocol"
-	"strconv"
 )
 
 const (
@@ -20,12 +19,6 @@ const (
 var (
 	// TODO: need mutex
 	OnlineUsers map[int]*net.Conn
-	// messages
-	ServerMessage = map[string]string{
-		"existed":         time.Now().Format(time.RFC822) + " you're forced to exit",
-		"unknown_actions": "unknown actions",
-		"push_done":       "successfully push messages to all online users",
-	}
 )
 
 func main() {
@@ -46,45 +39,48 @@ func handleRequest(conn net.Conn) {
 	message := make(chan []byte, 64)
 	done := make(chan bool)
 
+	log.Println("Listening client", conn.RemoteAddr().String())
 	go readRequest(conn, message, done)
 	go heartbeating(conn, message, done)
-	log.Println("Listening client", conn.RemoteAddr().String())
 }
 
 func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 	for {
 		select {
 		case content := <-message:
-			p := RequestParams{}
-			if err := parseRequest(content, &p); err != nil {
-				log.Println("request params broken")
+			r := Request{}
+			if err := parseRequest(content, &r); err != nil {
+				log.Println("Failed to parse request params")
 				break
 			}
-			log.Println("Client " + conn.RemoteAddr().String() + " params - " + p.String())
-			if p.Action == "ping" {
-				if c, ok := OnlineUsers[p.Id]; ok {
-					log.Printf("Found existed user: " + strconv.Itoa(p.Id))
-					(*c).Write([]byte(ServerMessage["existed"]))
+			log.Println("Client " + conn.RemoteAddr().String() + " params - " + r.String())
+			if r.Action == Ping {
+				if c, ok := OnlineUsers[r.Id]; ok {
+					log.Printf("Found existed user: " + strconv.Itoa(r.Id))
+					p := newResponse("existed", ResponsePush)
+					connWrite(c, p.Json())
 					(*c).Close()
-					delete(OnlineUsers, p.Id)
+					delete(OnlineUsers, r.Id)
 				}
 
-				OnlineUsers[p.Id] = &conn
+				OnlineUsers[r.Id] = &conn
 				conn.SetDeadline(time.Now().Add(time.Duration(LongSocketTimeout) * time.Second))
-			} else if p.Action == "push" {
-				pushNotification(&OnlineUsers, []byte(p.Args))
-				conn.Write([]byte(ServerMessage["push_done"]))
-				conn.Close()
+				p := newActionResponse(Ping)
+				connWrite(&conn, p.Json())
+			} else if r.Action == Push {
+				pushMessage(&OnlineUsers, []byte(r.Args))
+				p := newActionResponse(Push)
+				connWrite(&conn, p.Json())
 				done <- true
+				return
 			} else {
-				conn.Write([]byte(ServerMessage["unknown_actions"]))
-				conn.Close()
+				p := newResponse("unknown_actions", ResponseReply)
+				connWrite(&conn, p.Json())
 				done <- true
+				return
 			}
 		case <-time.After(LongSocketTimeout * time.Second):
 			log.Println("Client " + conn.RemoteAddr().String() + " exit")
-			conn.Write([]byte("Closing..."))
-			conn.Close()
 			done <- true
 			return
 		}
@@ -98,6 +94,7 @@ func readRequest(conn net.Conn, message chan<- []byte, done <-chan bool) {
 	for {
 		select {
 		case <-done:
+			go updateOnlineUsers(&conn)
 			conn.Close()
 			return
 		default:
@@ -107,30 +104,19 @@ func readRequest(conn net.Conn, message chan<- []byte, done <-chan bool) {
 	}
 }
 
-type RequestParams struct {
-	Id     int    `json:"id"`
-	Action string `json:"action"`
-	Args   string `json:"args,omitempty"`
-}
-
-func parseRequest(message []byte, p *RequestParams) error {
-	if err := json.Unmarshal(message, p); err != nil {
-		log.Println("json unmarshal error")
-		return err
-	}
-	return nil
-}
-
-func (p *RequestParams) String() string {
-	s := "id:" + strconv.Itoa(p.Id) + ", action:" + p.Action
-	if p.Args != "" {
-		s += ", args: " + p.Args
-	}
-	return s
-}
-
-func pushNotification(conns *map[int]*net.Conn, message []byte) {
+func pushMessage(conns *map[int]*net.Conn, message []byte) {
 	for _, c := range *conns {
-		(*c).Write(message)
+		p := newPushResponse(string(message))
+		connWrite(c, p.Json())
+	}
+}
+
+func updateOnlineUsers(conn *net.Conn) {
+	log.Println("Updating online users...")
+	for k, v := range OnlineUsers {
+		if *v == *conn {
+			log.Println("Delete user: " + strconv.Itoa(k))
+			delete(OnlineUsers, k)
+		}
 	}
 }

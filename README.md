@@ -6,15 +6,16 @@ ATTENTION: Just for fun, not ready for production.
 
 ## How to play
 
-First you have to install go develop environment.
+First you need to install Go 1.6.
 
 ```
-cd $GO/src/github.com/cosmtrek/rose
+go get github.com/cosmtrek/rose
+cd $GOPATH/src/github.com/cosmtrek/rose
 make server
 ```
 
-Open another terminal and run `make client`.
+Open another terminal and run `make client`. You can run `make client id=2` to specify which client to be connecting the server and so on.
 
-Then open another terminal and run `make push_message`.
+In addition to that, open another terminal and run `make push_message`.
 
-See these three terminals output.
+Check these terminals output.

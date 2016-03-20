@@ -20,19 +20,34 @@ func sender(conn net.Conn, done chan<- bool) {
 	}
 }
 
-func reader(conn net.Conn, done chan<- bool) {
+func reader(conn net.Conn, done chan bool) {
 	defer func() {
 		done <- true
 	}()
 
 	buf := make([]byte, 1024)
+	tmpBuf := make([]byte, 1024)
+	message := make(chan []byte)
+
+	go func(message chan []byte, done chan bool) {
+		for {
+			select {
+			case m := <-message:
+				log.Println(string(m))
+			case <-done:
+				return
+			}
+		}
+	}(message, done)
+
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
 			fmt.Println("Cannot read from remote connection and exiting...")
 			os.Exit(1)
 		}
-		log.Println(string(buf[:n]))
+
+		tmpBuf = protocol.Unpack(append(tmpBuf, buf[:n]...), message)
 	}
 }
 
