@@ -1,4 +1,4 @@
-# Rose
+# Rose [![Build Status](https://travis-ci.org/cosmtrek/rose.svg?branch=master)](https://travis-ci.org/cosmtrek/rose)
 
 A super simple server supports tcp heartbeat and pushing messages to clients.
 
