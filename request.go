@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"strconv"
 )
 
@@ -34,7 +33,7 @@ func (r *Request) String() string {
 
 func parseRequest(message []byte, r *Request) error {
 	if err := json.Unmarshal(message, r); err != nil {
-		log.Println("Json unmarshal request params error")
+		errl.Println("Json unmarshal request params error")
 		return err
 	}
 	return nil

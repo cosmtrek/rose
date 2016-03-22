@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"flag"
 	"net"
 	"strconv"
 	"time"
@@ -22,6 +22,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	ln, err := net.Listen(ConnType, ServerHost+":"+ServerPort)
 	CheckErr(err)
 	defer ln.Close()
@@ -39,7 +41,6 @@ func handleRequest(conn net.Conn) {
 	message := make(chan []byte, 64)
 	done := make(chan bool)
 
-	log.Println("Listening client", conn.RemoteAddr().String())
 	go readRequest(conn, message, done)
 	go heartbeating(conn, message, done)
 }
@@ -50,13 +51,13 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 		case content := <-message:
 			r := Request{}
 			if err := parseRequest(content, &r); err != nil {
-				log.Println("Failed to parse request params")
+				errl.Println("Failed to parse request params")
 				break
 			}
-			log.Println("Client " + conn.RemoteAddr().String() + " params - " + r.String())
+			debug.Println("Client " + conn.RemoteAddr().String() + " " + r.String())
 			if r.Action == Ping {
 				if c, ok := OnlineUsers[r.Id]; ok {
-					log.Printf("Found existed user: " + strconv.Itoa(r.Id))
+					debug.Println("Found existed user " + strconv.Itoa(r.Id))
 					p := newResponse("existed", ResponsePush)
 					connWrite(c, p.Json())
 					(*c).Close()
@@ -80,7 +81,7 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 				return
 			}
 		case <-time.After(LongSocketTimeout * time.Second):
-			log.Println("Client " + conn.RemoteAddr().String() + " exit")
+			debug.Println("Client " + conn.RemoteAddr().String() + " exit")
 			done <- true
 			return
 		}
@@ -112,10 +113,10 @@ func pushMessage(conns *map[int]*net.Conn, message []byte) {
 }
 
 func updateOnlineUsers(conn *net.Conn) {
-	log.Println("Updating online users...")
+	debug.Println("Updating online users...")
 	for k, v := range OnlineUsers {
 		if *v == *conn {
-			log.Println("Delete user: " + strconv.Itoa(k))
+			debug.Println("Delete user " + strconv.Itoa(k))
 			delete(OnlineUsers, k)
 		}
 	}
