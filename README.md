@@ -19,3 +19,7 @@ Open another terminal and run `make client`. You can run `make client id=2` to s
 In addition to that, open another terminal and run `make push_message`.
 
 Check these terminals output.
+
+## Configuration
+
+There two ways to customize some arguments, one is copying `.rose.toml` to your home directory where Rose will check when starting, the other is running `rose -server_host=localhost -server_port=3333 -socket_timeout=300`.

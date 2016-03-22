@@ -1,0 +1,5 @@
+# README:
+#   Copy this file to home directory, run `cp .rose.toml ~/.rose.toml`
+server_host = "127.0.0.1"
+server_port = "3333"
+socket_timeout = 300 # seconds

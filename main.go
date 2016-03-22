@@ -1,19 +1,12 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/cosmtrek/rose/protocol"
-)
-
-const (
-	ServerHost        = "localhost"
-	ServerPort        = "3333"
-	ConnType          = "tcp"
-	LongSocketTimeout = 300
 )
 
 var (
@@ -22,9 +15,18 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	fmt.Println(`
+  _____
+ |  __ \
+ | |__) |   ___    ___    ___
+ |  _  /   / _ \  / __|  / _ \
+ | | \ \  | (_) | \__ \ |  __/
+ |_|  \_\  \___/  |___/  \___|
+`)
 
-	ln, err := net.Listen(ConnType, ServerHost+":"+ServerPort)
+	initConfig()
+
+	ln, err := net.Listen("tcp", config.ServerHost+":"+config.ServerPort)
 	CheckErr(err)
 	defer ln.Close()
 
@@ -65,7 +67,7 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 				}
 
 				OnlineUsers[r.Id] = &conn
-				conn.SetDeadline(time.Now().Add(time.Duration(LongSocketTimeout) * time.Second))
+				conn.SetDeadline(time.Now().Add(time.Duration(config.SocketTimeout) * time.Second))
 				p := newActionResponse(Ping)
 				connWrite(&conn, p.Json())
 			} else if r.Action == Push {
@@ -80,7 +82,7 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 				done <- true
 				return
 			}
-		case <-time.After(LongSocketTimeout * time.Second):
+		case <-time.After(time.Duration(config.SocketTimeout) * time.Second):
 			debug.Println("Client " + conn.RemoteAddr().String() + " exit")
 			done <- true
 			return
