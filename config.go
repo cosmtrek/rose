@@ -14,6 +14,7 @@ type Config struct {
 	ServerHost    string `toml:"server_host"`
 	ServerPort    string `toml:"server_port"`
 	SocketTimeout int    `toml:"socket_timeout"`
+	PidFile       string `toml:"pid_file,omitempty"`
 }
 
 const (
@@ -26,6 +27,7 @@ var (
 		ServerHost:    "127.0.0.1",
 		ServerPort:    "3333",
 		SocketTimeout: 300,
+		PidFile:       "./rose.pid",
 	}
 )
 

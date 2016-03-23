@@ -20,6 +20,7 @@ func main() {
 `)
 
 	initConfig()
+	go guardSignal()
 
 	ln, err := net.Listen("tcp", config.ServerHost+":"+config.ServerPort)
 	CheckErr(err)

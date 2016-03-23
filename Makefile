@@ -1,4 +1,4 @@
-BIN = $(GOPATH)/bin/rose
+BIN := $(GOPATH)/bin/rose
 
 .PHONY: clean
 
@@ -11,8 +11,13 @@ build: clean
 install: clean
 	go install
 
-server: install
+dev: install
+	sh script.sh
 	$(BIN)
+
+production: install
+	sh script.sh
+	$(BIN) > rose.production.log &
 
 id ?= 1
 client:

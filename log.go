@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/fatih/color"
 )
@@ -36,6 +37,27 @@ func init() {
 	flag.BoolVar((*bool)(&info), "info log", true, "show basic info")
 	flag.BoolVar((*bool)(&errl), "error log", true, "show error info")
 	flag.BoolVar((*bool)(&debug), "debug log", debugFlag, "show debug info")
+
+	writePid()
+}
+
+func writePid() {
+	pid := os.Getpid()
+	pidFile := config.PidFile
+	file, err := os.OpenFile(pidFile, os.O_WRONLY, os.ModeAppend)
+	if err == nil {
+		if _, err := file.WriteString(strconv.Itoa(pid)); err != nil {
+			errl.Printf("Failed to write pid to file, error: %s", err)
+		}
+	} else {
+		file, err = os.Create(pidFile)
+		if err == nil {
+			if _, err := file.WriteString(strconv.Itoa(pid)); err != nil {
+				errl.Printf("Failed to write pid to file, error: %s", err)
+			}
+		}
+	}
+	file.Close()
 }
 
 func (l infoLogging) Printf(format string, args ...interface{}) {
