@@ -8,7 +8,7 @@ import (
 
 var (
 	ServerMessage = map[string]string{
-		"existed":         time.Now().Format(time.RFC822) + " you're forced to exit",
+		"existed":         "you're forced to be offline",
 		"unknown_actions": "unknown actions",
 	}
 	ServerMessageCode = map[string]int{
@@ -23,10 +23,11 @@ const (
 )
 
 type Response struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Error   string `json:"error,omitempty"`
-	Type    string `json:"type"`
+	Type      string `json:"type"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+	Error     string `json:"error,omitempty"`
+	CreatedAt string `json:"created_at"`
 }
 
 func (r *Response) String() string {
@@ -47,24 +48,27 @@ func (r *Response) Json() string {
 
 func newResponse(msg string, rtype string) *Response {
 	return &Response{
-		Code:    ServerMessageCode[msg],
-		Message: ServerMessage[msg],
-		Type:    rtype,
+		Type:      rtype,
+		Code:      ServerMessageCode[msg],
+		Message:   ServerMessage[msg],
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 }
 
 func newActionResponse(action string) *Response {
 	return &Response{
-		Code:    0,
-		Message: ReqResp[action],
-		Type:    ResponseReply,
+		Type:      ResponseReply,
+		Code:      0,
+		Message:   ReqResp[action],
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 }
 
 func newPushResponse(msg string) *Response {
 	return &Response{
-		Code:    0,
-		Message: msg,
-		Type:    ResponsePush,
+		Type:      ResponsePush,
+		Code:      0,
+		Message:   msg,
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 }
