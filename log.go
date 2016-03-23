@@ -28,9 +28,14 @@ var (
 )
 
 func init() {
+	var debugFlag bool
+	if config.ServerEnv == "development" {
+		debugFlag = true
+	}
+
 	flag.BoolVar((*bool)(&info), "info log", true, "show basic info")
 	flag.BoolVar((*bool)(&errl), "error log", true, "show error info")
-	flag.BoolVar((*bool)(&debug), "debug log", true, "show debug info")
+	flag.BoolVar((*bool)(&debug), "debug log", debugFlag, "show debug info")
 }
 
 func (l infoLogging) Printf(format string, args ...interface{}) {

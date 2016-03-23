@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	ServerEnv     string `toml:"server_env"`
 	ServerHost    string `toml:"server_host"`
 	ServerPort    string `toml:"server_port"`
 	SocketTimeout int    `toml:"socket_timeout"`
@@ -21,6 +22,7 @@ const (
 
 var (
 	config = Config{
+		ServerEnv:     "development",
 		ServerHost:    "127.0.0.1",
 		ServerPort:    "3333",
 		SocketTimeout: 300,
