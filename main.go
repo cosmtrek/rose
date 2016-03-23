@@ -9,11 +9,6 @@ import (
 	"github.com/cosmtrek/rose/protocol"
 )
 
-var (
-	// TODO: need mutex
-	OnlineUsers map[int]*net.Conn
-)
-
 func main() {
 	fmt.Println(`
   _____
@@ -29,8 +24,6 @@ func main() {
 	ln, err := net.Listen("tcp", config.ServerHost+":"+config.ServerPort)
 	CheckErr(err)
 	defer ln.Close()
-
-	OnlineUsers = make(map[int]*net.Conn)
 
 	for {
 		conn, err := ln.Accept()
@@ -56,22 +49,22 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 				errl.Println("Failed to parse request params")
 				break
 			}
-			debug.Println("Client " + conn.RemoteAddr().String() + " " + r.String())
+			info.Println(conn.RemoteAddr().String() + " " + r.String())
 			if r.Action == Ping {
-				if c, ok := OnlineUsers[r.Id]; ok {
+				if c, ok := global.OnlineUsers[r.Id]; ok {
 					debug.Println("Found existed user " + strconv.Itoa(r.Id))
 					p := newResponse("existed", ResponsePush)
 					connWrite(c, p.Json())
 					(*c).Close()
-					delete(OnlineUsers, r.Id)
+					global.deleteOnlineUser(r.Id)
 				}
 
-				OnlineUsers[r.Id] = &conn
+				global.addOnlineUser(r.Id, &conn)
 				conn.SetDeadline(time.Now().Add(time.Duration(config.SocketTimeout) * time.Second))
 				p := newActionResponse(Ping)
 				connWrite(&conn, p.Json())
 			} else if r.Action == Push {
-				pushMessage(&OnlineUsers, []byte(r.Args))
+				pushMessage([]byte(r.Args))
 				p := newActionResponse(Push)
 				connWrite(&conn, p.Json())
 				done <- true
@@ -97,7 +90,7 @@ func readRequest(conn net.Conn, message chan<- []byte, done <-chan bool) {
 	for {
 		select {
 		case <-done:
-			go updateOnlineUsers(&conn)
+			go global.updateOnlineUsers(&conn)
 			conn.Close()
 			return
 		default:
@@ -107,19 +100,9 @@ func readRequest(conn net.Conn, message chan<- []byte, done <-chan bool) {
 	}
 }
 
-func pushMessage(conns *map[int]*net.Conn, message []byte) {
-	for _, c := range *conns {
+func pushMessage(message []byte) {
+	for _, c := range global.OnlineUsers {
 		p := newPushResponse(string(message))
 		connWrite(c, p.Json())
-	}
-}
-
-func updateOnlineUsers(conn *net.Conn) {
-	debug.Println("Updating online users...")
-	for k, v := range OnlineUsers {
-		if *v == *conn {
-			debug.Println("Delete user " + strconv.Itoa(k))
-			delete(OnlineUsers, k)
-		}
 	}
 }

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/cosmtrek/rose/protocol"
 	"net"
+
+	"github.com/cosmtrek/rose/protocol"
 )
 
 func connWrite(conn *net.Conn, msg string) {
