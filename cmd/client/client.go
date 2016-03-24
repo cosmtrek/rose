@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cosmtrek/rose/protocol"
 	"log"
 	"net"
 	"os"
 	"strconv"
+
+	"github.com/cosmtrek/rose/protocol"
 )
 
 func sender(conn net.Conn, id int, done chan<- bool) {

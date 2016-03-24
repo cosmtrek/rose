@@ -28,8 +28,8 @@ var (
 	debugLog = log.New(os.Stdout, color.BlueString("DEBUG: "), logFormat)
 )
 
-func init() {
-	var debugFlag bool
+func initLog() {
+	debugFlag := false
 	if config.ServerEnv == "development" {
 		debugFlag = true
 	}

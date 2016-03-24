@@ -11,13 +11,16 @@ build: clean
 install: clean
 	go install
 
-dev: install
+install-with-race: clean
+	go install -race
+
+dev: install-with-race
 	sh script.sh
 	$(BIN)
 
 production: install
 	sh script.sh
-	$(BIN) > rose.production.log &
+	$(BIN) -server_env=production > rose.production.log &
 
 id ?= 1
 client:

@@ -52,7 +52,7 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 			}
 			info.Println(conn.RemoteAddr().String() + " " + r.String())
 			if r.Action == Ping {
-				if c, ok := global.OnlineUsers[r.Id]; ok {
+				if c, ok := global.getOnlineUser(r.Id); ok {
 					debug.Println("Found existed user " + strconv.Itoa(r.Id))
 					p := newResponse("existed", ResponsePush)
 					connWrite(c, p.Json())

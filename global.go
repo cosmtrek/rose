@@ -26,6 +26,13 @@ func (g *Global) updateOnlineUsers(conn *net.Conn) {
 	}
 }
 
+func (g *Global) getOnlineUser(uid int) (*net.Conn, bool) {
+	g.RLock()
+	c, ok := global.OnlineUsers[uid]
+	g.RUnlock()
+	return c, ok
+}
+
 func (g *Global) deleteOnlineUser(uid int) {
 	g.Lock()
 	debug.Println("Delete user " + strconv.Itoa(uid))
