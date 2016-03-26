@@ -26,6 +26,8 @@ func main() {
 	CheckErr(err)
 	defer ln.Close()
 
+	go processRequest()
+
 	for {
 		conn, err := ln.Accept()
 		CheckErr(err)
@@ -33,24 +35,13 @@ func main() {
 	}
 }
 
-func handleRequest(conn net.Conn) {
-	message := make(chan []byte, 64)
-	done := make(chan bool)
-
-	go readRequest(conn, message, done)
-	go heartbeating(conn, message, done)
-}
-
-func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
+func processRequest() {
 	for {
 		select {
-		case content := <-message:
-			r := Request{}
-			if err := parseRequest(content, &r); err != nil {
-				errl.Println("Failed to parse request params")
-				break
-			}
-			info.Println(conn.RemoteAddr().String() + " " + r.String())
+		case rp := <-RequestQueue:
+			c := *rp.Conn
+			r := rp.Message
+			info.Println(c.RemoteAddr().String() + " " + r.String())
 			if r.Action == Ping {
 				if c, ok := global.getOnlineUser(r.Id); ok {
 					debug.Println("Found existed user " + strconv.Itoa(r.Id))
@@ -60,43 +51,61 @@ func heartbeating(conn net.Conn, message <-chan []byte, done chan<- bool) {
 					global.deleteOnlineUser(r.Id)
 				}
 
-				global.addOnlineUser(r.Id, &conn)
-				conn.SetDeadline(time.Now().Add(time.Duration(config.SocketTimeout) * time.Second))
+				global.addOnlineUser(r.Id, rp.Conn)
+				c.SetDeadline(time.Now().Add(time.Duration(config.SocketTimeout) * time.Second))
 				p := newActionResponse(Ping)
-				connWrite(&conn, p.Json())
+				connWrite(&c, p.Json())
 			} else if r.Action == Push {
 				pushMessage([]byte(r.Args))
 				p := newActionResponse(Push)
-				connWrite(&conn, p.Json())
-				done <- true
-				return
+				connWrite(&c, p.Json())
 			} else {
 				p := newResponse("unknown_actions", ResponseReply)
-				connWrite(&conn, p.Json())
-				done <- true
-				return
+				connWrite(&c, p.Json())
 			}
-		case <-time.After(time.Duration(config.SocketTimeout) * time.Second):
-			debug.Println("Client " + conn.RemoteAddr().String() + " exit")
-			done <- true
-			return
 		}
 	}
 }
 
-func readRequest(conn net.Conn, message chan<- []byte, done <-chan bool) {
-	buf := make([]byte, 1024)
-	tmpBuf := make([]byte, 1024)
+type RequestPackage struct {
+	Conn    *net.Conn
+	Message Request
+}
+
+var (
+	RequestQueue = make(chan RequestPackage, 1000)
+)
+
+func handleRequest(conn net.Conn) {
+	buf := make([]byte, 64)
+	tmpBuf := make([]byte, 64)
+	m := make(chan []byte, 1)
 
 	for {
 		select {
-		case <-done:
-			go global.updateOnlineUsers(&conn)
-			conn.Close()
-			return
+		case r := <-m:
+			p := RequestPackage{
+				Conn:    &conn,
+				Message: Request{},
+			}
+			if err := parseRequest(r, &p.Message); err != nil {
+				errl.Println("Failed to parse request params")
+				break
+			}
+			debug.Printf("RequestPackage: %v", p)
+			debug.Printf("Current request queue size: %d", len(RequestQueue))
+			debug.Printf("OnlineUsers map size: %d", len(global.OnlineUsers))
+			RequestQueue <- p
 		default:
-			n, _ := conn.Read(buf)
-			tmpBuf = protocol.Unpack(append(tmpBuf, buf[:n]...), message)
+			n, err := conn.Read(buf)
+			if err != nil {
+				conn.Close()
+				close(m)
+				debug.Println("Closing m chan and conn")
+				return
+			}
+
+			tmpBuf = protocol.Unpack(append(tmpBuf, buf[:n]...), m)
 		}
 	}
 }

@@ -7,5 +7,8 @@ import (
 )
 
 func connWrite(conn *net.Conn, msg string) {
-	(*conn).Write(protocol.Pack([]byte(msg)))
+	if _, err := (*conn).Write(protocol.Pack([]byte(msg))); err != nil {
+		errl.Println(err)
+		(*conn).Close()
+	}
 }
