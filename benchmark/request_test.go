@@ -18,7 +18,6 @@ import (
 //	}
 // }
 
-// TODO: need to improve
 func BenchmarkConnectSequentially(b *testing.B) {
 	server := "127.0.0.1:3333"
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
@@ -38,28 +37,28 @@ func BenchmarkConnectSequentially(b *testing.B) {
 	}
 }
 
-// func BenchmarkConnectConcurrently(b *testing.B) {
-//	server := "127.0.0.1:3333"
-//	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
-//	if err != nil {
-//		fmt.Println("Failed to resolve server")
-//		return
-//	}
-//
-//	b.RunParallel(func(pb *testing.PB) {
-//		i := 1
-//		for pb.Next() {
-//			conn, err := setupConn(tcpAddr)
-//			if err != nil {
-//				fmt.Println(err)
-//			}
-//			done := make(chan bool)
-//			i++
-//			go sender(conn, i, done)
-//			<-done
-//		}
-//	})
-// }
+func BenchmarkConnectConcurrently(b *testing.B) {
+	server := "127.0.0.1:3333"
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
+	if err != nil {
+		fmt.Println("Failed to resolve server")
+		return
+	}
+
+	b.RunParallel(func(pb *testing.PB) {
+		i := 1
+		for pb.Next() {
+			conn, err := setupConn(tcpAddr)
+			if err != nil {
+				fmt.Println(err)
+			}
+			done := make(chan bool)
+			i++
+			go sender(conn, i, done)
+			<-done
+		}
+	})
+}
 
 func setupConn(tcpAddr *net.TCPAddr) (net.Conn, error) {
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)

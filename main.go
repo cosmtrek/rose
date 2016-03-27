@@ -23,14 +23,19 @@ func main() {
 	go guardSignal()
 
 	ln, err := net.Listen("tcp", config.ServerHost+":"+config.ServerPort)
-	CheckErr(err)
+	if err != nil {
+		Fatal(err)
+	}
 	defer ln.Close()
 
 	go processRequest()
 
 	for {
 		conn, err := ln.Accept()
-		CheckErr(err)
+		if err != nil {
+			errl.Println(err)
+			break
+		}
 		go handleRequest(conn)
 	}
 }
@@ -76,6 +81,11 @@ var (
 	RequestQueue = make(chan RequestPackage, 1000)
 )
 
+func systemStat() {
+	debug.Printf("Current request queue size: %d", len(RequestQueue))
+	debug.Printf("OnlineUsers map size: %d", len(global.OnlineUsers))
+}
+
 func handleRequest(conn net.Conn) {
 	buf := make([]byte, 64)
 	tmpBuf := make([]byte, 64)
@@ -93,15 +103,12 @@ func handleRequest(conn net.Conn) {
 				break
 			}
 			debug.Printf("RequestPackage: %v", p)
-			debug.Printf("Current request queue size: %d", len(RequestQueue))
-			debug.Printf("OnlineUsers map size: %d", len(global.OnlineUsers))
 			RequestQueue <- p
 		default:
 			n, err := conn.Read(buf)
 			if err != nil {
 				conn.Close()
 				close(m)
-				debug.Println("Closing m chan and conn")
 				return
 			}
 
